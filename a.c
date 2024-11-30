@@ -10,9 +10,7 @@
 #define BUFFER_SIZE 10
 
 typedef union {
-    int i;
-    float f;
-    char c;
+    char str[10];
 } DataUnion;
 
 DataUnion *buf_addr;
@@ -47,7 +45,7 @@ void r_init() {
         printf("\nstart: %d, end: %d\n\n", start, end);
 
         for (i = start; i != end; i=(i+1)%BUFFER_SIZE) {
-            printf("[%d]: %d\n", i, buf_addr[i].i);
+            printf("[%d]: %s\n", i, buf_addr[i].str);
         }
 
         int input;
@@ -64,22 +62,18 @@ void r_init() {
     }
 }
 
-void r_scanf(const char *format, void *arg) {
+void r_scanf(char *arg) {
     int index = *cnt_addr % BUFFER_SIZE;
-    scanf(format, arg);
-    if (format[1] == 'c') {
-        buf_addr[index].c = *(char *)arg;
-    } else if (format[1] == 'd') {
-        buf_addr[index].i = *(int *)arg;
-    } else if (format[1] == 'f') {
-        buf_addr[index].f = *(float *)arg;
-    }
+
+    scanf("%s", arg);
+    strcpy(buf_addr[index].str, arg);
+    
     printf("Saved at: %d\n", index);
     (*cnt_addr)++;
 }
 
-void r_printf(const char *format, void *value) {
-    printf(format, *(int *)value);
+void r_printf(char *value) {
+    printf("%s", value);
 }
 
 void r_cleanup() {
@@ -91,6 +85,7 @@ void r_cleanup() {
 
 int main() {
     int i;
+    char input[10];
     struct sigaction sa = {0};
     sa.sa_handler = SIG_IGN;
     sigaction(SIGINT, &sa, NULL);
@@ -104,10 +99,10 @@ int main() {
             sa_child.sa_handler = SIG_DFL;
             sigaction(SIGINT, &sa_child, NULL);
 
-            for (i = *cnt_addr; i < 30; i++) {
-                int input;
-                printf("Enter number [%d]: ", i);
-                r_scanf("%d", &input);
+            for (i = *cnt_addr; i < 20; i++) {
+                printf("Enter Data: ");
+                r_scanf(input);
+                r_printf(input);
             }
             exit(0);
         } else {
