@@ -14,10 +14,11 @@ typedef union {
 } DataUnion;
 
 DataUnion *buf_addr;
-int *cnt_addr;
+int *start_addr;
+int *end_addr;
 
 int mode = 0;
-int buf_fd, cnt_fd;
+int buf_fd, end_fd, start_fd;
 
 void r_init() {
     int i;
@@ -29,47 +30,57 @@ void r_init() {
     close(buf_fd);
 
     // data2 파일 매핑 (시작 지점 저장)
-    cnt_fd = open("data2", O_RDWR | O_CREAT, 0600);
-    ftruncate(cnt_fd, sizeof(int));
-    cnt_addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, cnt_fd, 0);
-    close(cnt_fd);
+    end_fd = open("data2", O_RDWR | O_CREAT, 0600);
+    ftruncate(end_fd, sizeof(int));
+    end_addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, end_fd, 0);
+    close(end_fd);
+
+    // data2 파일 매핑 (시작 지점 저장)
+    start_fd = open("data3", O_RDWR | O_CREAT, 0600);
+    ftruncate(start_fd, sizeof(int));
+    start_addr = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, start_fd, 0);
+    close(start_fd);
 
     // cnt 초기화 또는 복구
     if (mode == 1) {
         printf("Current saved data:\n");
 
-        int start = (*cnt_addr - BUFFER_SIZE + 1)%BUFFER_SIZE;
-        int end = *cnt_addr % BUFFER_SIZE;
-        if (start < 0) start = 0;
+        printf("\nstart: %d, end: %d\n", *start_addr, *end_addr);
 
-        printf("\nstart: %d, end: %d\n\n", start, end);
-
-        for (i = start; i != end; i=(i+1)%BUFFER_SIZE) {
-            printf("[%d]: %s\n", i, buf_addr[i].str);
+        int iter = *start_addr;
+        for(i=0;i<10;i++){ 
+            if(iter == *end_addr)   break;
+            printf("[%d]: %s\n", iter, buf_addr[iter].str);
+            iter = (iter+1)%BUFFER_SIZE;
         }
+        
 
         int input;
-        printf("Enter recovery point (%d~%d) or -1 to continue: ", start, *cnt_addr);
+        printf("Enter recovery point (%d~%d) or -1 to continue: ", *start_addr, *end_addr);
         scanf("%d", &input);    input--;
-        if (input < start) {
-            *cnt_addr = start;
+        if (input < *start_addr) {
+            input = *start_addr;
         }
-        else if(input >= start && input <= *cnt_addr){
-            *cnt_addr = input;
+        else if(input > *end_addr){
+            input = *end_addr;
         }
-    } else {
-        *cnt_addr = 0; // cnt 초기화
+        
+        *end_addr = input;
     }
 }
 
 void r_scanf(char *arg) {
-    int index = *cnt_addr % BUFFER_SIZE;
+    int index = *end_addr % BUFFER_SIZE;
 
     scanf("%s", arg);
     strcpy(buf_addr[index].str, arg);
     
     printf("Saved at: %d\n", index);
-    (*cnt_addr)++;
+    if((*end_addr + 1) % BUFFER_SIZE == *start_addr) {
+        *start_addr = (*start_addr + 1) % BUFFER_SIZE;
+    }
+    *end_addr = (*end_addr + 1) % BUFFER_SIZE;
+    
 }
 
 void r_printf(char *value) {
@@ -78,9 +89,11 @@ void r_printf(char *value) {
 
 void r_cleanup() {
     munmap(buf_addr, sizeof(DataUnion) * BUFFER_SIZE);
-    munmap(cnt_addr, sizeof(int));
+    munmap(end_addr, sizeof(int));
+    munmap(start_addr, sizeof(int));
     unlink("data1");
     unlink("data2");
+    unlink("data3");
 }
 
 int main() {
@@ -95,11 +108,12 @@ int main() {
 
         pid_t pid = fork();
         if (pid == 0) {
+            printf("\ncnt: %d\n\n", *end_addr);
             struct sigaction sa_child = {0};
             sa_child.sa_handler = SIG_DFL;
             sigaction(SIGINT, &sa_child, NULL);
 
-            for (i = *cnt_addr; i < 20; i++) {
+            for (i = *end_addr; i < 20; i++) {
                 printf("Enter Data: ");
                 r_scanf(input);
                 r_printf(input);
