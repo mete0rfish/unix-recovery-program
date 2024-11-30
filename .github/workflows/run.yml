@@ -10,25 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. 리포지토리 클론
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # 2. Build essential 설치
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential
 
-    # 3. 프로그램 A 컴파일
     - name: Compile Program A
-      run: gcc -o programA programA.c
+      run: gcc -o a a.c
 
-
-    # 5. 프로그램 실행
     - name: Run programs
       run: |
-        # 백그라운드에서 프로그램 A 실행
-        ./programA &
-        # 프로그램 B 실행
-        ./programB
+        ./a
