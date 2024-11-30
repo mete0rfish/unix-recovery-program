@@ -18,9 +18,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential
 
+    - name: Create Input File
+      run: |
+        sudo echo "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n" > input
+        sudo cat input  # 파일 내용 확인
+
     - name: Compile Program A
       run: gcc -o a a.c
 
     - name: Run programs
       run: |
-        ./a
+        ./a < input &
+        sleep 2 &
+        kill -SIGINT $!
